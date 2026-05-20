@@ -1,0 +1,32 @@
+# =============================================================================
+# Hadolint Configuration — Dockerfile Linting Rules
+# =============================================================================
+# See: https://github.com/hadolint/hadolint#rules
+# =============================================================================
+
+# Treat all rules as warnings by default, fail only on errors
+failure-threshold: warning
+
+# Trusted registries (allow pulls from these only)
+trustedRegistries:
+  - docker.io
+  - gcr.io
+  - ghcr.io
+
+# Ignored rules with justification
+ignored:
+  # DL3008: Pin versions in apt-get install — acceptable in builder stage
+  - DL3008
+
+# Override specific rule severities
+override:
+  warning:
+    # DL3025: Use JSON notation for CMD/ENTRYPOINT
+    - DL3025
+  error:
+    # DL3000: Use absolute WORKDIR
+    - DL3000
+    # DL3001: Never use 'last tag' for base images in production
+    - DL3001
+    # SC2086: Double quote to prevent globbing
+    - SC2086

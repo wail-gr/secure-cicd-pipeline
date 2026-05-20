@@ -1,0 +1,4 @@
+go.uber.org/multierr v1.11.0 h1:blXXJkSxSSfBVBlC76pxqeO+LN3aDfLQo+309xIstOE=
+go.uber.org/multierr v1.11.0/go.mod h1:20+QELqLnFN9DLBW9kka2IsglBmQR5Nx7GQWGP7LBto=
+go.uber.org/zap v1.27.0 h1:aJMhYGrd5QSmlpLMr2MftRKl7t8J8PTZPA732ud/XR8=
+go.uber.org/zap v1.27.0/go.mod h1:7vFFhgOxQ7V0YjTpNPJbsCqGLABjnmNEofZsqhaBSEM=

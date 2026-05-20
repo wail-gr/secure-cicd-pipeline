@@ -1,0 +1,36 @@
+# Build artifacts
+bin/
+*.exe
+
+# Test files
+*_test.go
+coverage.out
+
+# Development files
+Dockerfile.dev
+.air.toml
+docker-compose*.yml
+
+# IDE & OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+README.md
+LICENSE
+docs/
+
+# Infrastructure (not needed in container)
+infra/
+scripts/
+
+# CI/CD (not needed in container)
+.github/
+.hadolint.yaml
+Makefile

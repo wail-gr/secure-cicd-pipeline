@@ -17,6 +17,8 @@ trustedRegistries:
 ignored:
   # DL3008: Pin versions in apt-get install — acceptable in builder stage
   - DL3008
+  # DL4006: Already handled via SHELL instruction in Dockerfile
+  - DL4006
 
 # Override specific rule severities
 override:

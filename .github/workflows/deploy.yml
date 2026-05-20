@@ -2,7 +2,7 @@
 # CD Pipeline — Build, Push to Artifact Registry, Deploy to Cloud Run
 # =============================================================================
 # Triggered only on push to main (after CI passes).
-# Uses Workload Identity Federation for keyless GCP authentication.
+# Skips gracefully if GCP secrets are not configured.
 # =============================================================================
 
 name: CD Pipeline — Deploy to Cloud Run
@@ -13,14 +13,13 @@ on:
 
 permissions:
   contents: read
-  id-token: write  # Required for Workload Identity Federation
+  id-token: write
 
 env:
   GO_VERSION: "1.23"
   CLOUD_RUN_SERVICE: secure-api
-  CLOUD_RUN_REGION: ${{ secrets.GCP_REGION }}
-  GAR_LOCATION: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_AR_REPO }}
   IMAGE_NAME: secure-api
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 # Ensure only one deployment runs at a time
 concurrency:
@@ -34,6 +33,8 @@ jobs:
   build-and-push:
     name: Build & Push Image
     runs-on: ubuntu-latest
+    # Skip if GCP secrets are not configured
+    if: ${{ secrets.GCP_SA_KEY != '' && secrets.GCP_PROJECT_ID != '' }}
     outputs:
       image_tag: ${{ steps.meta.outputs.tags }}
       image_digest: ${{ steps.build.outputs.digest }}
@@ -62,7 +63,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.GAR_LOCATION }}/${{ env.IMAGE_NAME }}
+          images: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_AR_REPO }}/${{ env.IMAGE_NAME }}
           tags: |
             type=sha,prefix=
             type=raw,value=latest
@@ -70,7 +71,7 @@ jobs:
 
       - name: Build and push to Artifact Registry
         id: build
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
@@ -99,6 +100,7 @@ jobs:
     name: Deploy to Cloud Run
     runs-on: ubuntu-latest
     needs: build-and-push
+    if: ${{ needs.build-and-push.result == 'success' }}
     environment: production
 
     steps:
@@ -118,8 +120,8 @@ jobs:
         uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: ${{ env.CLOUD_RUN_SERVICE }}
-          region: ${{ env.CLOUD_RUN_REGION }}
-          image: ${{ env.GAR_LOCATION }}/${{ env.IMAGE_NAME }}:latest
+          region: ${{ secrets.GCP_REGION }}
+          image: ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/${{ secrets.GCP_AR_REPO }}/${{ env.IMAGE_NAME }}:latest
           flags: |
             --platform=managed
             --allow-unauthenticated
@@ -154,8 +156,27 @@ jobs:
           echo "  Deployment Summary"
           echo "============================================"
           echo "  Service:  ${{ env.CLOUD_RUN_SERVICE }}"
-          echo "  Region:   ${{ env.CLOUD_RUN_REGION }}"
+          echo "  Region:   ${{ secrets.GCP_REGION }}"
           echo "  URL:      ${{ steps.deploy.outputs.url }}"
-          echo "  Image:    ${{ env.GAR_LOCATION }}/${{ env.IMAGE_NAME }}:latest"
           echo "  Commit:   ${{ github.sha }}"
           echo "============================================"
+
+  # ---------------------------------------------------------------------------
+  # Job 3: Skip notice when GCP is not configured
+  # ---------------------------------------------------------------------------
+  skip-notice:
+    name: CD Skipped (No GCP Secrets)
+    runs-on: ubuntu-latest
+    if: ${{ secrets.GCP_SA_KEY == '' || secrets.GCP_PROJECT_ID == '' }}
+    steps:
+      - name: Notice
+        run: |
+          echo "ℹ️  CD pipeline skipped — GCP secrets are not configured."
+          echo ""
+          echo "To enable deployment, add these GitHub Secrets:"
+          echo "  • GCP_SA_KEY       — Service account JSON key (base64)"
+          echo "  • GCP_PROJECT_ID   — GCP project ID"
+          echo "  • GCP_REGION       — Deployment region (e.g., us-central1)"
+          echo "  • GCP_AR_REPO      — Artifact Registry repository name"
+          echo ""
+          echo "See README.md for setup instructions."
